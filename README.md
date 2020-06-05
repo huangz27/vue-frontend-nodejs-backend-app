@@ -1,6 +1,12 @@
 # vue-frontend-nodejs-backend-app
 
-##setup backend and run server (after cloning)
+### setup backend server (after cloning)
+Ensure node is installed first
+```
+$ sudo curl -sL https://deb.nodesource.com/setup_12.x | sudo bash -
+$ sudo apt-get install -y nodejs
+```
+Setup and run the server
 ```
 $ cd vue-frontend-nodejs-backend-app/nodejs-backend
 $ npm install
