@@ -253,15 +253,18 @@ app.get('/api-sessions/obtain-device-list', function (req, res) {
     OV.fetch().then(anyChange => {
         var activeSessions = OV.activeSessions;
         
+        mapSessionsStatus = {};  //reset map session status object to empty at the start of the api call
+
         for (var i = 0; i<activeSessions.length; i++) {
             //check if session was inititalised properly on backend before setting it to be connected
             var sessionName = activeSessions[i].sessionId;
             if (mapSessions[sessionName]) {
-                mapSessionsStatus[sessionName] = "connected";
+                mapSessionsStatus[sessionName] = "connected"; 
             };
         };
         if (activeSessions.length == 0) {
             console.log("No active sessions");
+            mapSessions = {}; //reset map session object back to empty
         }
         //console.log(mapSessionsStatus);
 
@@ -270,7 +273,7 @@ app.get('/api-sessions/obtain-device-list', function (req, res) {
           response[x] = {
             device_name: "device" + x,
             Session_id: "camera" + x,
-            Status: mapSessionsStatus["camera" + x] || "not connected" ,
+            Status: mapSessionsStatus["camera" + x] || "not connected" ,  //if session status is undefined, it will appear as not connected
             };
         }
         console.log(response);
