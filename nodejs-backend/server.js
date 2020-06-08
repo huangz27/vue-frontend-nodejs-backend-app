@@ -188,9 +188,9 @@ app.post('/api-sessions/remove-user', function (req, res) {
             if (tokens.length == 0) {
                 // Last user left: session must be removed
                 console.log(sessionName + ' empty!');
-                var current_session = mapSessions[sessionName];
                 var success_msg = sessionName + ' closed';
-                current_session.close().then(() => console.log(success_msg));
+                // var current_session = mapSessions[sessionName];
+                // current_session.close().then(() => console.log(success_msg));
                 delete mapSessions[sessionName];
                 delete mapSessionsStatus[sessionName];
             }
@@ -333,8 +333,19 @@ app.get('/api-recording/session/:sessionid', function (req, res) {
  
 });
 
+app.delete('/api-recording/:record_id', function (req, res) {
+    var record_id = req.params.record_id;
+    OV.deleteRecording(record_id).then( empty => {
+        res.status(200).send('Successfully deleted recording with id: ' + record_id + ' on server')
+    })
+    .catch(error => {
+        console.log(error);
+        var msg = "no recording exists with record_id"
+        res.status(error.message).send("error " + error.message);
+    });
 
-
+  
+})
 
   
 
