@@ -188,10 +188,13 @@ app.post('/api-sessions/remove-user', function (req, res) {
             if (tokens.length == 0) {
                 // Last user left: session must be removed
                 console.log(sessionName + ' empty!');
+                var current_session = mapSessions[sessionName];
+                var success_msg = sessionName + ' closed';
+                current_session.close().then(() => console.log(success_msg));
                 delete mapSessions[sessionName];
                 delete mapSessionsStatus[sessionName];
             }
-            res.status(200).send();
+            res.status(200).send(success_msg);
         } else {
             var msg = 'Problems in the app server: the SESSION does not exist';
             console.log(msg);
