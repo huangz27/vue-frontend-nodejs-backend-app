@@ -189,6 +189,7 @@ app.post('/api-sessions/remove-user', function (req, res) {
                 // Last user left: session must be removed
                 console.log(sessionName + ' empty!');
                 delete mapSessions[sessionName];
+                delete mapSessionsStatus[sessionName];
             }
             res.status(200).send();
         } else {
@@ -256,6 +257,9 @@ app.get('/api-sessions/obtain-device-list', function (req, res) {
                 mapSessionsStatus[sessionName] = "connected";
             };
         };
+        if (activeSessions.length == 0) {
+            console.log("No active sessions");
+        }
         //console.log(mapSessionsStatus);
 
         var response = {};
