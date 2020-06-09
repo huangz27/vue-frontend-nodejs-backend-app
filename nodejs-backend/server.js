@@ -19,6 +19,7 @@ var https = require('https');
 var bodyParser = require('body-parser'); // Pull information from HTML POST (express4)
 var app = express(); // Create our app with express
 var cors = require('cors');
+const axios = require('axios');
 
 // Server configuration
 app.use(session({
@@ -74,8 +75,12 @@ var mapSessionNamesTokens = {};
 // Collection to pair session names with status
 var mapSessionsStatus = {};
 
+//Collection to pair session names with connection ID for IP cameras
+var mapSessionsConnectionID = {};
+
 // Number of devices (PLEASE MAKE IT DYNAMIC LATER ON)
 var number_of_devices = 2;
+
 
 console.log("App listening on port 5000");
 
@@ -92,19 +97,19 @@ app.post('/api-sessions/get-token', function (req, res) {
 
         // Role associated to this user
        // var role = users.find(u => (u.user === req.session.loggedUser)).role;
-        var role = OpenViduRole.PUBLISHER;
+        // var role = OpenViduRole.PUBLISHER;
 
-        // Optional data to be passed to other users when this user connects to the video-call
-        // In this case, a JSON with the value we stored in the req.session object on login
-        var serverData = JSON.stringify({ serverData: "publisher1" });
+        // // Optional data to be passed to other users when this user connects to the video-call
+        // // In this case, a JSON with the value we stored in the req.session object on login
+        // var serverData = JSON.stringify({ serverData: "publisher1" });
 
-        console.log("Getting a token | {sessionName}={" + sessionName + "}");
+        // console.log("Getting a token | {sessionName}={" + sessionName + "}");
 
-        // Build tokenOptions object with the serverData and the role
-        var tokenOptions = {
-            data: serverData,
-            role: role
-        };
+        // // Build tokenOptions object with the serverData and the role
+        // var tokenOptions = {
+        //     data: serverData,
+        //     role: role
+        // };
 
         if (mapSessions[sessionName]) {
             // Session already exists
@@ -114,7 +119,7 @@ app.post('/api-sessions/get-token', function (req, res) {
             var mySession = mapSessions[sessionName];
 
             // Generate a new token asynchronously with the recently created tokenOptions
-            mySession.generateToken(tokenOptions)
+            mySession.generateToken()
                 .then(token => {
 
                     // Store the new token in the collection of tokens
@@ -143,7 +148,7 @@ app.post('/api-sessions/get-token', function (req, res) {
                     mapSessionNamesTokens[sessionName] = [];
 
                     // Generate a new token asynchronously with the recently created tokenOptions
-                    session.generateToken(tokenOptions)
+                    session.generateToken()
                         .then(token => {
 
                             // Store the new token in the collection of tokens
@@ -208,20 +213,23 @@ app.post('/api-recording/start-record', function (req, res) {
     
     var sessionName = req.body.session_id;
 
-    OV.startRecording(sessionName).then(recordingStarted => {
-        var recordingID = recordingStarted.id; 
-        console.log("successfully started recording:" + recordingID);
-        //send recording id and properties to the client
-        res.status(200).send({
-            id: recordingStarted.id ,
-            status: recordingStarted.status,
-            properties: recordingStarted.properties
+    //only can start recording if status is connected
+    // if (mapSessionsStatus[sessionName]) {
+        OV.startRecording(sessionName).then(recordingStarted => {
+            var recordingID = recordingStarted.id; 
+            console.log("successfully started recording:" + recordingID);
+            //send recording id and properties to the client
+            res.status(200).send({
+                id: recordingStarted.id ,
+                status: recordingStarted.status,
+                properties: recordingStarted.properties
+            });
+        })
+        .catch(error => {
+            console.error(error.message);
+            res.status(error.message).send("error" + error.message);
         });
-    })
-    .catch(error => {
-        console.error(error.message);
-        res.status(error.message).send("error" + error.message);
-    });
+    // }
 });
 
 // Stop recording the session using session ID as recording ID
@@ -252,14 +260,22 @@ app.get('/api-sessions/obtain-device-list', function (req, res) {
 
     OV.fetch().then(anyChange => {
         var activeSessions = OV.activeSessions;
-        
+        // console.log(activeSessions[0].activeConnections);
         mapSessionsStatus = {};  //reset map session status object to empty at the start of the api call
 
         for (var i = 0; i<activeSessions.length; i++) {
             //check if session was inititalised properly on backend before setting it to be connected
             var sessionName = activeSessions[i].sessionId;
             if (mapSessions[sessionName]) {
-                mapSessionsStatus[sessionName] = "connected"; 
+
+                //within each active session, there can be multiple connections, check the publishers of each connection
+                for (var j = 0; j<activeSessions[i].activeConnections.length; j++) {
+                    if (activeSessions[i].activeConnections[j].publishers.length) {
+                        mapSessionsStatus[sessionName] = "connected"; 
+                        console.log(sessionName + " publisher connected")
+                    }
+                }
+                
             };
         };
         if (activeSessions.length == 0) {
@@ -321,7 +337,7 @@ app.get('/api-recording/session/:sessionid', function (req, res) {
                     url: recordingList[x].url
                  }
         }
-
+        console.log(list_of_recording);
         res.status(200).send(list_of_recording);
 
     })
@@ -335,7 +351,8 @@ app.get('/api-recording/session/:sessionid', function (req, res) {
 
 app.delete('/api-recording/:record_id', function (req, res) {
     var record_id = req.params.record_id;
-    OV.deleteRecording(record_id).then( empty => {
+    OV.deleteRecording(record_id).then( () => {
+        console.log("Successfully deleted recording")
         res.status(200).send('Successfully deleted recording with id: ' + record_id + ' on server')
     })
     .catch(error => {
@@ -345,10 +362,64 @@ app.delete('/api-recording/:record_id', function (req, res) {
     });
 
   
-})
+});
 
-  
+app.post('/api-sessions/ip-camera-publisher', function (req, res) {
+    
+    var sessionName = req.body.session_id;
+    var data = JSON.stringify({
+          rtspUri: req.body.rtspUri
+        });
+    console.log(data);
+    new Promise((resolve, reject) => {
+        axios.post(
+            'https://' + 'localhost:4443' + '/api/sessions/'+ sessionName +'/connection',
+            data,
+            {
+              headers: {
+                'Authorization': getBasicAuth(),
+                'Content-Type': 'application/json'
+              }
+            }
+        )
+        .then(response => {
+            console.log(respose);
+            resolve(response);
+        })
+        .catch(error => {
+            console.log(error);
+            reject(error);
+        // 400: problem with some body parameter
+        // 404: no session exists for the passed SESSION_ID
+        // 500: unexpected error when publishing the IP camera stream into the session. See the error message for further information
+        });
+    
+    })
+    .then(response => {
+        res.send(response);
+        mapSessionsConnectionID[sessionName] = response.connectionId;
+        console.log("publishing ip camera");
+    })
+    .catch(error => {
+        res.status(error.response.status).send(error);
+    });
+    
+});
 
+app.delete('/api-sessions/ip-camera-unpublish/:sessionId/:connectionId', function (req, res) {
+    var sessionName = req.params.sessionId;
+    var mySession = mapSessions[sessionName];
+    // mySession.forceDisconnect(mapSessionsConnectionID[sessionName]).then(() => {
+    mySession.forceDisconnect(req.params.connectionId).then(() => {
+        console.log("unpublish ip camera");
+        res.status(200).send('Successfully unpublish ip camera');
+    })
+    .catch(error => {
+        console.log(error);
+        res.status(error.message).send("error " + error.message);
+    });
+
+});
 
 /* REST API */
 
