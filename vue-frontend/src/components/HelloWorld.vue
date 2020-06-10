@@ -132,7 +132,7 @@ var token;
                 return new Promise((resolve, reject) => {
                     this.axios({
                         method:'post', 
-                        url: "https://localhost:5000/api-sessions/get-token",
+                        url: "https://"+ window.location.hostname +":5000/api-sessions/get-token",
                         data: {
                             session_id: mySessionId,
                             role: "PUBLISHER"
@@ -156,7 +156,7 @@ var token;
             removeUser() {
                 this.axios({
                     method:'post', 
-                    url: "https://localhost:5000/api-sessions/remove-user",
+                    url: "https://"+ window.location.hostname +":5000/api-sessions/remove-user",
                     data: {session_id: this.sessionId, token: token},
                     
                 })
@@ -174,7 +174,7 @@ var token;
             start_record() {
                 this.axios({
                     method:'post', 
-                    url: "https://localhost:5000/api-recording/start-record",
+                    url: "https://" + window.location.hostname + ":5000/api-recording/start-record",
                     data: ({ 
                         session_id: this.sessionId }),   
                     })
@@ -192,7 +192,7 @@ var token;
             stop_record(){
                 this.axios({
                     method:'post', 
-                    url: "https://localhost:5000/api-recording/stop-record",
+                    url: "https://" + window.location.hostname +":5000/api-recording/stop-record",
                     data: ({ 
                         record_id: this.recordingId }),   
                        
