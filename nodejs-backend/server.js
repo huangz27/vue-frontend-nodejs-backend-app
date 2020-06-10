@@ -21,6 +21,10 @@ var app = express(); // Create our app with express
 var cors = require('cors');
 const axios = require('axios');
 
+//var corsOptions = {
+//   origin: process.env.CORS_ORIGIN || "*"
+//};
+
 // Server configuration
 app.use(session({
     saveUninitialized: true,
