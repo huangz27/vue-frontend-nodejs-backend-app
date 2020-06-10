@@ -98,22 +98,23 @@ app.post('/api-sessions/get-token', function (req, res) {
 
         // The video-call to connect
         var sessionName = req.body.session_id;
+        var role = req.body.role
 
         // Role associated to this user
-       // var role = users.find(u => (u.user === req.session.loggedUser)).role;
+        // var role = users.find(u => (u.user === req.session.loggedUser)).role;
         // var role = OpenViduRole.PUBLISHER;
 
-        // // Optional data to be passed to other users when this user connects to the video-call
-        // // In this case, a JSON with the value we stored in the req.session object on login
+        // Optional data to be passed to other users when this user connects to the video-call
+        // In this case, a JSON with the value we stored in the req.session object on login
         // var serverData = JSON.stringify({ serverData: "publisher1" });
 
-        // console.log("Getting a token | {sessionName}={" + sessionName + "}");
+        console.log("Getting a token | {sessionName}={" + sessionName + "}");
 
-        // // Build tokenOptions object with the serverData and the role
-        // var tokenOptions = {
-        //     data: serverData,
-        //     role: role
-        // };
+        // Build tokenOptions object with the serverData and the role
+        var tokenOptions = {
+            //data: serverData,
+            role: role//role
+        };
 
         if (mapSessions[sessionName]) {
             // Session already exists
@@ -123,7 +124,7 @@ app.post('/api-sessions/get-token', function (req, res) {
             var mySession = mapSessions[sessionName];
 
             // Generate a new token asynchronously with the recently created tokenOptions
-            mySession.generateToken()
+            mySession.generateToken(tokenOptions)
                 .then(token => {
 
                     // Store the new token in the collection of tokens
@@ -152,7 +153,7 @@ app.post('/api-sessions/get-token', function (req, res) {
                     mapSessionNamesTokens[sessionName] = [];
 
                     // Generate a new token asynchronously with the recently created tokenOptions
-                    session.generateToken()
+                    session.generateToken(tokenOptions)
                         .then(token => {
 
                             // Store the new token in the collection of tokens
