@@ -102,9 +102,9 @@ var token;
               session.connect(token)
                 .then(() => {
                     this.joined = true;
-                    // var resolution_data = (window.innerWidth * 0.35) + "x";  //first half of the resolution is enough
-                    // var publisher = OV.initPublisher("publisher", { resolution: resolution_data});
-                    // session.publish(publisher);
+                    var resolution_data = (window.innerWidth * 0.35) + "x";  //first half of the resolution is enough
+                    var publisher = OV.initPublisher("publisher", { resolution: resolution_data});
+                    session.publish(publisher);
                 })
                 .catch(error => {
                     console.log("There was an error connecting to the session:", error.code, error.message);
@@ -133,7 +133,10 @@ var token;
                     this.axios({
                         method:'post', 
                         url: "https://localhost:5000/api-sessions/get-token",
-                        data: {session_id: mySessionId},
+                        data: {
+                            session_id: mySessionId,
+                            role: "PUBLISHER"
+                        },
                         
                     })
                     .then(response => {
