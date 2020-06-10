@@ -102,8 +102,9 @@ var token;
               session.connect(token)
                 .then(() => {
                     this.joined = true;
-                    var resolution_data = (window.innerWidth * 0.35) + "x";  //first half of the resolution is enough
+                    var resolution_data = (window.innerWidth * 0.35) + "x" + (window.innerWidth * 0.35 / 4.0 * 3.0);  
                     var publisher = OV.initPublisher("publisher", { resolution: resolution_data});
+                    // var publisher = OV.initPublisher("publisher");
                     session.publish(publisher);
                 })
                 .catch(error => {
