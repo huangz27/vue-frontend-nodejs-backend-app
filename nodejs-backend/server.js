@@ -137,7 +137,7 @@ app.post('/api-sessions/get-token', function (req, res) {
                 })
                 .catch(error => {
                     console.error(error);
-                    res.status(error).send(error);
+                    res.status(error.message).send("error generating token for this session,please try again!");
                     delete mapSessions[sessionName];
                 });
         } else {
@@ -166,10 +166,12 @@ app.post('/api-sessions/get-token', function (req, res) {
                         })
                         .catch(error => {
                             console.error(error);
+                            res.send(error);
                         });
                 })
                 .catch(error => {
                     console.error(error);
+                    res.send(error);
                 });
         }
 });
@@ -384,7 +386,7 @@ app.post('/api-sessions/ip-camera-publisher', function (req, res) {
     console.log(data);
     new Promise((resolve, reject) => {
         axios.post(
-            'https://' + 'localhost:4443' + '/api/sessions/'+ sessionName +'/connection',
+            OPENVIDU_URL + '/api/sessions/'+ sessionName +'/connection',
             data,
             {
               headers: {
