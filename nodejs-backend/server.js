@@ -312,7 +312,10 @@ app.get('/api-recording/:recordingid', function (req, res) {
             id: recordingRetrieved.id,
             timestamp_raw: recordingRetrieved.createdAt,
             timestamp: date.toString(),
-            url: recordingRetrieved.url
+            url: recordingRetrieved.url,
+            duration: recordingRetrieved.duration,
+            size: recordingRetrieved.size,
+            status: recordingRetrieved.status,
         });
 
     })
@@ -339,7 +342,10 @@ app.get('/api-recording/session/:sessionid', function (req, res) {
                     id: recordingList[x].id,
                     timestamp_raw: recordingList[x].createdAt,
                     timestamp: date.toString(),
-                    url: recordingList[x].url
+                    url: recordingList[x].url,
+                    duration: recordingList[x].duration,
+                    size: recordingList[x].size,
+                    status: recordingList[x].status
                  }
         }
         console.log(list_of_recording);
