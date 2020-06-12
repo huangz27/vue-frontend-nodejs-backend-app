@@ -273,17 +273,28 @@ app.get('/api-sessions/obtain-device-list', function (req, res) {
         for (var i = 0; i<activeSessions.length; i++) {
             //check if session was inititalised properly on backend before setting it to be connected
             var sessionName = activeSessions[i].sessionId;
-            if (mapSessions[sessionName]) {
+            // if (mapSessions[sessionName]) {
+                // console.log(activeSessions[i].activeConnections);
 
-                //within each active session, there can be multiple connections, check the publishers of each connection
+                //within each active session, there can be multiple connections, check the publishers and subscribers of each connection
                 for (var j = 0; j<activeSessions[i].activeConnections.length; j++) {
                     if (activeSessions[i].activeConnections[j].publishers.length) {
-                        mapSessionsStatus[sessionName] = "connected"; 
-                        console.log(sessionName + " publisher connected")
+                        if (activeSessions[i].activeConnections[j].platform == 'IPCAM') {
+                            mapSessionsStatus[sessionName] = "connected"; 
+                            console.log(sessionName + " IP CAM publisher connected");
+                        }
+                        else {
+                            console.log(sessionName + " normal publisher connected");
+                        }
                     }
+                    if (activeSessions[i].activeConnections[j].subscribers.length) {
+                        console.log(sessionName + " subscriber with id: " + 
+                            activeSessions[i].activeConnections[j].connectionId +" connected" );
+                    }
+
                 }
                 
-            };
+            // };
         };
         if (activeSessions.length == 0) {
             console.log("No active sessions");
