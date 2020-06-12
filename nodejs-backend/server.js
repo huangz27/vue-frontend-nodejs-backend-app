@@ -396,11 +396,13 @@ app.post('/api-sessions/ip-camera-publisher', function (req, res) {
             }
         )
         .then(response => {
-            console.log(respose);
+            console.log(response);
+            console.log("YAY in");
             resolve(response);
         })
         .catch(error => {
             console.log(error);
+            console.log("SAD in");
             reject(error);
         // 400: problem with some body parameter
         // 404: no session exists for the passed SESSION_ID
@@ -409,12 +411,15 @@ app.post('/api-sessions/ip-camera-publisher', function (req, res) {
     
     })
     .then(response => {
-        res.send(response);
-        mapSessionsConnectionID[sessionName] = response.connectionId;
+        console.log("YAY out");
+        res.send(response.data);
+        mapSessionsConnectionID[sessionName] = response.data.connectionId;
         console.log("publishing ip camera");
     })
     .catch(error => {
-        res.status(error.response.status).send(error);
+        console.log("SAD out");
+        console.log(error)
+        res.status(500).send(error);
     });
     
 });
@@ -422,10 +427,11 @@ app.post('/api-sessions/ip-camera-publisher', function (req, res) {
 app.delete('/api-sessions/ip-camera-unpublish/:sessionId/:connectionId', function (req, res) {
     var sessionName = req.params.sessionId;
     var mySession = mapSessions[sessionName];
+    console.log(mapSessionsConnectionID[sessionName]);
     // mySession.forceDisconnect(mapSessionsConnectionID[sessionName]).then(() => {
     mySession.forceDisconnect(req.params.connectionId).then(() => {
-        console.log("unpublish ip camera");
-        res.status(200).send('Successfully unpublish ip camera');
+        console.log("unpublished ip camera");
+        res.status(200).send('Successfully unpublished ip camera');
     })
     .catch(error => {
         console.log(error);
