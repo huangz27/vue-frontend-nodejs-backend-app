@@ -48,7 +48,7 @@ var options = {
 };
 https.createServer(options, app).listen(5000);
 
-// Mock database
+// Mock database (array of objects)
 var users = [{
     user: "publisher1",
     pass: "pass",
@@ -95,85 +95,12 @@ console.log("App listening on port 5000");
 
 // Get token (add new user to session)
 app.post('/api-sessions/get-token', function (req, res) {
-
-        // The video-call to connect
-        var sessionName = req.body.session_id;
-        var role = req.body.role
-
-        // Role associated to this user
-        // var role = users.find(u => (u.user === req.session.loggedUser)).role;
-        // var role = OpenViduRole.PUBLISHER;
-
-        // Optional data to be passed to other users when this user connects to the video-call
-        // In this case, a JSON with the value we stored in the req.session object on login
-        // var serverData = JSON.stringify({ serverData: "publisher1" });
-
-        console.log("Getting a token | {sessionName}={" + sessionName + "}");
-
-        // Build tokenOptions object with the serverData and the role
-        var tokenOptions = {
-            //data: serverData,
-            role: role//role
-        };
-
-        if (mapSessions[sessionName]) {
-            // Session already exists
-            console.log('Existing session ' + sessionName);
-
-            // Get the existing Session from the collection
-            var mySession = mapSessions[sessionName];
-
-            // Generate a new token asynchronously with the recently created tokenOptions
-            mySession.generateToken(tokenOptions)
-                .then(token => {
-
-                    // Store the new token in the collection of tokens
-                    mapSessionNamesTokens[sessionName].push(token);
-
-                    // Return the token to the client
-                    res.status(200).send({
-                        token: token
-                    });
-                })
-                .catch(error => {
-                    console.error(error);
-                    res.status(error.message).send("error generating token for this session,please try again!");
-                    delete mapSessions[sessionName];
-                });
-        } else {
-            // New session
-            console.log('New session ' + sessionName);
-
-            // Create a new OpenVidu Session asynchronously
-            OV.createSession({"customSessionId": sessionName})  //MUST ADD customsessionID for recording
-                .then(session => {
-                    // Store the new Session in the collection of Sessions
-                    mapSessions[sessionName] = session;
-                    // Store a new empty array in the collection of tokens
-                    mapSessionNamesTokens[sessionName] = [];
-
-                    // Generate a new token asynchronously with the recently created tokenOptions
-                    session.generateToken(tokenOptions)
-                        .then(token => {
-
-                            // Store the new token in the collection of tokens
-                            mapSessionNamesTokens[sessionName].push(token);
-
-                            // Return the Token to the client
-                            res.status(200).send({
-                                token: token
-                            });
-                        })
-                        .catch(error => {
-                            console.error(error);
-                            res.send(error);
-                        });
-                })
-                .catch(error => {
-                    console.error(error);
-                    res.send(error);
-                });
-        }
+    getToken(req, res).then(response => {
+        res.status(200).send(response)
+    })
+    .catch(error => {
+        res.status(error.message).send("error generating token for this session,please try again!");
+    })
 });
 
 // Remove user from session
@@ -263,22 +190,26 @@ app.post('/api-recording/stop-record', function (req, res) {
     });
 });
 
+// Stop obtain a list of devices and their status
 app.get('/api-sessions/obtain-device-list', function (req, res) {
 
     OV.fetch().then(anyChange => {
         var activeSessions = OV.activeSessions;
         // console.log(activeSessions[0].activeConnections);
         mapSessionsStatus = {};  //reset map session status object to empty at the start of the api call
-
+        mapSessions = {};  //reset all sessions object 
+        // console.log(activeSessions.find(test => test.sessionId == "camera2").sessionId);
         for (var i = 0; i<activeSessions.length; i++) {
             //check if session was inititalised properly on backend before setting it to be connected
             var sessionName = activeSessions[i].sessionId;
+            mapSessions[sessionName] = activeSessions[i]; //only put back active sessions
             // if (mapSessions[sessionName]) {
                 // console.log(activeSessions[i].activeConnections);
 
                 //within each active session, there can be multiple connections, check the publishers and subscribers of each connection
                 for (var j = 0; j<activeSessions[i].activeConnections.length; j++) {
                     if (activeSessions[i].activeConnections[j].publishers.length) {
+                        //check if the publisher is a IP camera or normal publisher
                         if (activeSessions[i].activeConnections[j].platform == 'IPCAM') {
                             mapSessionsStatus[sessionName] = "connected"; 
                             console.log(sessionName + " IP CAM publisher connected");
@@ -293,14 +224,8 @@ app.get('/api-sessions/obtain-device-list', function (req, res) {
                     }
 
                 }
-                
             // };
         };
-        if (activeSessions.length == 0) {
-            console.log("No active sessions");
-            mapSessions = {}; //reset map session object back to empty
-        }
-        //console.log(mapSessionsStatus);
 
         var response = {};
         for (var x = 1; x <= number_of_devices; x++) {
@@ -315,16 +240,18 @@ app.get('/api-sessions/obtain-device-list', function (req, res) {
     });
 });
 
+//retrieve recording by recording ID
 app.get('/api-recording/:recordingid', function (req, res) {
 
     OV.getRecording(req.params.recordingid).then(recordingRetrieved => { 
 
+        //convert raw millisecond into processed timestamp
         var date = new Date(recordingRetrieved.createdAt);
 
         res.status(200).send({
             id: recordingRetrieved.id,
             timestamp_raw: recordingRetrieved.createdAt,
-            timestamp: date.toString(),
+            timestamp: date.toString(), //convert raw millisecond into processed timestamp
             url: recordingRetrieved.url,
             duration: recordingRetrieved.duration,
             size: recordingRetrieved.size,
@@ -340,6 +267,7 @@ app.get('/api-recording/:recordingid', function (req, res) {
  
 });
 
+//retrieve recording by session ID
 app.get('/api-recording/session/:sessionid', function (req, res) {
     var session_id = req.params.sessionid;
 
@@ -348,13 +276,14 @@ app.get('/api-recording/session/:sessionid', function (req, res) {
         var list_of_recording = {}; 
         for (var x = 0; x < recordingList.length; x++) {
             
+            // filter the list according to sessionid passed in by api call
             if (session_id == recordingList[x].sessionId)
-                var date = new Date(recordingList[x].createdAt);
+                var date = new Date(recordingList[x].createdAt); //convert raw millisecond into processed timestamp
 
                 list_of_recording[x] = {
                     id: recordingList[x].id,
                     timestamp_raw: recordingList[x].createdAt,
-                    timestamp: date.toString(),
+                    timestamp: date.toString(), //convert raw millisecond into processed timestamp
                     url: recordingList[x].url,
                     duration: recordingList[x].duration,
                     size: recordingList[x].size,
@@ -373,6 +302,7 @@ app.get('/api-recording/session/:sessionid', function (req, res) {
  
 });
 
+//delete recording by recording ID
 app.delete('/api-recording/:record_id', function (req, res) {
     var record_id = req.params.record_id;
     OV.deleteRecording(record_id).then( () => {
@@ -388,14 +318,17 @@ app.delete('/api-recording/:record_id', function (req, res) {
   
 });
 
+//publish IP camera
 app.post('/api-sessions/ip-camera-publisher', function (req, res) {
+    
+    getToken(req, res).then( () => {
     
     var sessionName = req.body.session_id;
     var data = JSON.stringify({
           rtspUri: req.body.rtspUri
         });
     console.log(data);
-    new Promise((resolve, reject) => {
+    // new Promise((resolve, reject) => {
         axios.post(
             OPENVIDU_URL + '/api/sessions/'+ sessionName +'/connection',
             data,
@@ -407,34 +340,38 @@ app.post('/api-sessions/ip-camera-publisher', function (req, res) {
             }
         )
         .then(response => {
-            console.log(response);
+            // console.log(response);
             console.log("YAY in");
-            resolve(response);
+            res.send(response.data)
+            console.log("publishing ip camera");
+            // resolve(response);
         })
         .catch(error => {
-            console.log(error);
+            // console.log(error);
             console.log("SAD in");
-            reject(error);
+            res.status(500).send(error);
+            // reject(error);
         // 400: problem with some body parameter
         // 404: no session exists for the passed SESSION_ID
         // 500: unexpected error when publishing the IP camera stream into the session. See the error message for further information
         });
     
+    // })
+    // .then(response => {
+    //     console.log("YAY out");
+    //     res.send(response.data);
+    //     mapSessionsConnectionID[sessionName] = response.data.connectionId;
+    //     console.log("publishing ip camera");
+    // })
+    // .catch(error => {
+    //     console.log("SAD out");
+    //     console.log(error)
+    //     res.status(500).send(error);
+    // });
     })
-    .then(response => {
-        console.log("YAY out");
-        res.send(response.data);
-        mapSessionsConnectionID[sessionName] = response.data.connectionId;
-        console.log("publishing ip camera");
-    })
-    .catch(error => {
-        console.log("SAD out");
-        console.log(error)
-        res.status(500).send(error);
-    });
-    
 });
 
+//unpublish IP camera
 app.delete('/api-sessions/ip-camera-unpublish/:sessionId/:connectionId', function (req, res) {
     var sessionName = req.params.sessionId;
     var mySession = mapSessions[sessionName];
@@ -467,6 +404,86 @@ function isLogged(session) {
 
 function getBasicAuth() {
     return 'Basic ' + (new Buffer('OPENVIDUAPP:' + OPENVIDU_SECRET).toString('base64'));
+}
+
+function getToken(req, res) {
+    return new Promise((resolve, reject) => {
+// The video-call to connect
+        var sessionName = req.body.session_id;
+        var role = req.body.role
+
+        // Role associated to this user   
+        // var role = users.find(u => (u.user === req.session.loggedUser)).role; //user.find finds the object with user corresponding to loggedUser
+        // var role = OpenViduRole.PUBLISHER;
+
+        // Optional data to be passed to other users when this user connects to the video-call
+        // In this case, a JSON with the value we stored in the req.session object on login
+        // var serverData = JSON.stringify({ serverData: "publisher1" });
+
+        console.log("Getting a token | {sessionName}={" + sessionName + "}");
+
+        // Build tokenOptions object with the serverData and the role
+        var tokenOptions = {
+            //data: serverData,
+            role: role
+        };
+
+        if (mapSessions[sessionName]) {
+            // Session already exists
+            console.log('Existing session ' + sessionName);
+
+            // Get the existing Session from the collection
+            var mySession = mapSessions[sessionName];
+
+            // Generate a new token asynchronously with the recently created tokenOptions
+            mySession.generateToken(tokenOptions)
+                .then(token => {
+
+                    // Store the new token in the collection of tokens
+                    mapSessionNamesTokens[sessionName].push(token);
+
+                    // Return the token to the client
+                    resolve({ token: token });
+                    
+                })
+                .catch(error => {
+                    console.error(error);
+                    delete mapSessions[sessionName];
+                    reject(error);
+                });
+        } else {
+            // New session
+            console.log('New session ' + sessionName);
+
+            // Create a new OpenVidu Session asynchronously
+            OV.createSession({"customSessionId": sessionName})  //MUST ADD customsessionID for recording
+                .then(session => {
+                    // Store the new Session in the collection of Sessions
+                    mapSessions[sessionName] = session;
+                    // Store a new empty array in the collection of tokens
+                    mapSessionNamesTokens[sessionName] = [];
+
+                    // Generate a new token asynchronously with the recently created tokenOptions
+                    session.generateToken(tokenOptions)
+                        .then(token => {
+
+                            // Store the new token in the collection of tokens
+                            mapSessionNamesTokens[sessionName].push(token);
+
+                            // Return the Token to the client
+                            resolve({ token: token });
+                        })
+                        .catch(error => {
+                            console.error(error);
+                            reject(error);
+                        });
+                })
+                .catch(error => {
+                    console.error(error);
+                    reject(error);
+                });
+        }
+    })
 }
 
 /* AUXILIARY METHODS */
