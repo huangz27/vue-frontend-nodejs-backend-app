@@ -216,8 +216,14 @@ app.get('/api-sessions/obtain-device-list', function (req, res) {
                     if (activeSessions[i].activeConnections[j].publishers.length) {
                         //check if the publisher is a IP camera or normal publisher
                         if (activeSessions[i].activeConnections[j].platform == 'IPCAM') {
-                            mapSessionsStatus[sessionName] = "connected"; 
-                            console.log(sessionName + " IP CAM publisher connected");
+                            if (activeSessions[i].activeConnections[j].subscribers.length) {
+                                mapSessionsStatus[sessionName] = "connected + streaming";
+                                console.log(sessionName + " IP CAM publisher connected and streaming");
+                            }
+                            else { 
+                                mapSessionsStatus[sessionName] = "connected"; 
+                                console.log(sessionName + " IP CAM publisher connected");
+                            }
                         }
                         else {
                             console.log(sessionName + " normal publisher connected");
