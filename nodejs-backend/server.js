@@ -331,7 +331,7 @@ app.post('/api-sessions/ip-camera-publisher', function (req, res) {
     
     var sessionName = req.body.session_id;
     var data = JSON.stringify({
-          rtspUri: mapSessionsRTSP[sessionName] //req.body.rtspUri
+          rtspUri: req.body.rtspUri || mapSessionsRTSP[sessionName] //
         });
     console.log(data);
     // new Promise((resolve, reject) => {
