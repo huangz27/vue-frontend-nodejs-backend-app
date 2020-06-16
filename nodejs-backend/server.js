@@ -85,6 +85,11 @@ var mapSessionsConnectionID = {};
 // Number of devices (PLEASE MAKE IT DYNAMIC LATER ON)
 var number_of_devices = 2;
 
+//Collection to pair session names with device for IP cameras (hardcoded rtsp uris)
+var mapSessionsRTSP = {
+    camera1: "rtsp://165.22.99.104/footage.mkv",  //"rtsp://192.168.1.216:8554/footage.mkv",
+    camera2: "rtsp://165.22.99.104/footage2.mkv"  //"rtsp://192.168.1.216:8554/footage2.mkv"
+};
 
 console.log("App listening on port 5000");
 
@@ -325,7 +330,7 @@ app.post('/api-sessions/ip-camera-publisher', function (req, res) {
     
     var sessionName = req.body.session_id;
     var data = JSON.stringify({
-          rtspUri: req.body.rtspUri
+          rtspUri: mapSessionsRTSP[sessionName] //req.body.rtspUri
         });
     console.log(data);
     // new Promise((resolve, reject) => {
@@ -344,6 +349,7 @@ app.post('/api-sessions/ip-camera-publisher', function (req, res) {
             console.log("YAY in");
             res.send(response.data)
             console.log("publishing ip camera");
+            mapSessionsConnectionID[sessionName] = response.data.connectionId;
             // resolve(response);
         })
         .catch(error => {
@@ -376,8 +382,8 @@ app.delete('/api-sessions/ip-camera-unpublish/:sessionId/:connectionId', functio
     var sessionName = req.params.sessionId;
     var mySession = mapSessions[sessionName];
     console.log(mapSessionsConnectionID[sessionName]);
-    // mySession.forceDisconnect(mapSessionsConnectionID[sessionName]).then(() => {
-    mySession.forceDisconnect(req.params.connectionId).then(() => {
+    mySession.forceDisconnect(mapSessionsConnectionID[sessionName]).then(() => {
+    // mySession.forceDisconnect(req.params.connectionId).then(() => {
         console.log("unpublished ip camera");
         res.status(200).send('Successfully unpublished ip camera');
     })
